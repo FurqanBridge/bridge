@@ -21,7 +21,7 @@ export default function DashboardPage() {
         .from('submissions')
         .select(`
           *,
-          students(first_name, last_name),
+          students(english_name, korean_name),
           storytelling(name, classes(name))
         `)
         .order('date_submitted', { ascending: false })
@@ -70,6 +70,14 @@ export default function DashboardPage() {
             </svg>
           </div>
           <span className="font-semibold text-[#1a1a2e] text-sm">Teacher Portal</span>
+          <span>
+            <button
+              onClick={() => router.push('/classes')}
+              className="text-sm text-[#6b7280] hover:text-[#1a1a2e] transition-colors"
+            >
+              Classes
+            </button>
+          </span>
         </div>
         <button
           onClick={handleSignOut}
@@ -165,7 +173,7 @@ export default function DashboardPage() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-[#1a1a2e] truncate">
-                      {s.students?.first_name} {s.students?.last_name}
+                      {s.students?.english_name} {s.students?.korean_name}
                     </p>
                     <p className="text-xs text-[#6b7280] truncate">
                       {s.storytelling?.name} · Class {s.storytelling?.classes?.name} · {s.date_submitted}

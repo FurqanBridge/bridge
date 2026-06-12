@@ -24,7 +24,7 @@ export function useSubmissions(filters: SubmissionFilters = {}) {
       .from('submissions')
       .select(`
         *,
-        students(first_name, last_name),
+        students(english_name, korean_name),
         storytelling(name, classes(name))
       `)
       .order('date_submitted', { ascending: false })
@@ -100,7 +100,7 @@ export function useSubmission(id: string) {
         .from('submissions')
         .select(`
           *,
-          students(first_name, last_name),
+          students(english_name, korean_name),
           storytelling(name, classes(name))
         `)
         .eq('id', id)
