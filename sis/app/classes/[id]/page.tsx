@@ -88,6 +88,17 @@ export default function ClassPage() {
             ))}
           </div>
         )}
+
+        {/* Add Student Button */}
+        <div className="pt-4">
+          <button
+            onClick={() => router.push(`/classes/${classId}/add-student`)}
+            className="w-full bg-[#3B5BDB] hover:bg-[#2f4ac4] text-white text-sm font-medium py-3 rounded-xl transition-colors"
+          >
+            + Add Student
+          </button>
+        </div>
+
       </div>
     </main>
   )

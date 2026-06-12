@@ -31,8 +31,8 @@ export type Student = {
 }
 
 export type NewStudent = {
-  first_name: string
-  last_name: string
+  english_name: string
+  korean_name: string
   class_id: string
 }
 
