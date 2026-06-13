@@ -67,12 +67,8 @@ export default function ClassPage() {
                 className="bg-white rounded-xl border border-[#e5e7eb] px-4 py-3 flex items-center justify-between"
               >
                 <div>
-                  <p className="text-sm font-medium text-[#1a1a2e]">
-                    {student.korean_name}
-                  </p>
-
                   <p className="text-xs text-[#6b7280]">
-                    {student.english_name}
+                    {student.name}
                   </p>
                 </div>
 

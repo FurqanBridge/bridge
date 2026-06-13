@@ -27,8 +27,7 @@ export default function AddStudentPage() {
     setError(null)
 
     const success = await addStudent({
-      english_name: englishName.trim(),
-      korean_name: koreanName.trim(),
+      name: englishName.trim(),
       class_id: classId,
     })
 

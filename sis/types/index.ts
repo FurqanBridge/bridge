@@ -23,16 +23,14 @@ export type NewClass = {
 // ============================================
 export type Student = {
   id: string
-  english_name: string
-  korean_name: string
+  name: string
   class_id: string
   created_at: string
   updated_at: string
 }
 
 export type NewStudent = {
-  english_name: string
-  korean_name: string
+  name: string
   class_id: string
 }
 
@@ -115,7 +113,7 @@ export type UpdateSubmission = Partial<Omit<NewSubmission, 'student_id' | 'story
 
 // Full submission with related data joined (for display purposes)
 export type SubmissionWithDetails = Submission & {
-  students: Pick<Student, 'english_name' | 'korean_name'>
+  students: Pick<Student, 'name'>
   storytelling: Pick<Storytelling, 'name'> & {
     classes: Pick<Class, 'name'>
   }

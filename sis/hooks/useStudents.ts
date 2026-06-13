@@ -16,7 +16,6 @@ export function useStudents(classId?: string) {
     let query = supabase
       .from('students')
       .select('*, classes(name)')
-      .order('korean_name')
 
     if (classId) query = query.eq('class_id', classId)
 
