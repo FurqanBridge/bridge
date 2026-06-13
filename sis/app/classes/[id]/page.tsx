@@ -88,17 +88,19 @@ export default function ClassPage() {
             ))}
           </div>
         )}
-
+        
         {/* Add Student Button */}
         <div className="pt-4">
           <button
+            disabled={students.length >= 6}
             onClick={() => router.push(`/classes/${classId}/add-student`)}
-            className="w-full bg-[#3B5BDB] hover:bg-[#2f4ac4] text-white text-sm font-medium py-3 rounded-xl transition-colors"
+            className="w-full bg-[#3B5BDB] hover:bg-[#2f4ac4] disabled:bg-[#9CA3AF] disabled:cursor-not-allowed text-white text-sm font-medium py-3 rounded-xl transition-colors"
           >
-            + Add Student
+            {students.length >= 6
+              ? 'Class is Full (6/6 Students)'
+              : '+ Add Student'}
           </button>
         </div>
-
       </div>
     </main>
   )

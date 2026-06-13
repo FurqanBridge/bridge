@@ -71,7 +71,7 @@ export default function AddStudentPage() {
           )}
 
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label className="text-xs text-[#6b7280]">
               Korean Name
             </label>
 
@@ -79,13 +79,13 @@ export default function AddStudentPage() {
               type="text"
               value={koreanName}
               onChange={(e) => setKoreanName(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-lg border border-[#d1d5db] focus:outline-none focus:ring-2 focus:ring-[#3B5BDB]"
+              className="w-full px-4 py-2.5 rounded-lg border border-[#d1d5db] focus:outline-none focus:ring-2 focus:ring-[#3B5BDB] text-[#1a1a2e]"
               placeholder="김민수"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label className="text-xs text-[#6b7280]">
               English Name
             </label>
 
@@ -93,7 +93,7 @@ export default function AddStudentPage() {
               type="text"
               value={englishName}
               onChange={(e) => setEnglishName(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-lg border border-[#d1d5db] focus:outline-none focus:ring-2 focus:ring-[#3B5BDB]"
+              className="w-full px-4 py-2.5 rounded-lg border border-[#d1d5db] focus:outline-none focus:ring-2 focus:ring-[#3B5BDB] text-[#1a1a2e]"
               placeholder="Minsu Kim"
             />
           </div>
