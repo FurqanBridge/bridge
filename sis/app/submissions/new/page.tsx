@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useClasses } from '@/hooks/useClasses'
@@ -25,6 +25,9 @@ export default function NewSubmissionPage() {
   const [attachment1, setAttachment1] = useState<File | null>(null)
   const [attachment2, setAttachment2] = useState<File | null>(null)
   const [attachment3, setAttachment3] = useState<File | null>(null)
+  const [preview1, setPreview1] = useState<string | null>(null)
+  const [preview2, setPreview2] = useState<string | null>(null)
+  const [preview3, setPreview3] = useState<string | null>(null)
   const [advantages, setAdvantages] = useState('')
   const [disadvantages, setDisadvantages] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -32,6 +35,28 @@ export default function NewSubmissionPage() {
 
   const router = useRouter()
   const supabase = createClient()
+
+  // Clean up object URLs on unmount or change
+  useEffect(() => {
+    return () => {
+      if (preview1) URL.revokeObjectURL(preview1)
+      if (preview2) URL.revokeObjectURL(preview2)
+      if (preview3) URL.revokeObjectURL(preview3)
+    }
+  }, [preview1, preview2, preview3])
+
+  function handleFileSelect(file: File | null, slot: 1 | 2 | 3) {
+    if (slot === 1) {
+      setAttachment1(file)
+      setPreview1(file ? URL.createObjectURL(file) : null)
+    } else if (slot === 2) {
+      setAttachment2(file)
+      setPreview2(file ? URL.createObjectURL(file) : null)
+    } else {
+      setAttachment3(file)
+      setPreview3(file ? URL.createObjectURL(file) : null)
+    }
+  }
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -213,21 +238,33 @@ export default function NewSubmissionPage() {
           <div className="space-y-2">
             <label className="block text-sm font-medium text-[#374151]">Attachments <span className="text-[#9ca3af] font-normal">(optional, images only)</span></label>
             {[
-              { set: setAttachment1, label: 'Attachment 1' },
-              { set: setAttachment2, label: 'Attachment 2' },
-              { set: setAttachment3, label: 'Attachment 3' },
-            ].map(({ set, label }) => (
-              <div key={label} className="flex items-center gap-2">
-                <label className="flex-1 flex items-center gap-2 px-4 py-2.5 rounded-lg border border-dashed border-[#d1d5db] text-sm text-[#6b7280] cursor-pointer hover:border-[#3B5BDB] hover:text-[#3B5BDB] transition-colors">
+              { preview: preview1, slot: 1 as const, label: 'Attachment 1' },
+              { preview: preview2, slot: 2 as const, label: 'Attachment 2' },
+              { preview: preview3, slot: 3 as const, label: 'Attachment 3' },
+            ].map(({ preview, slot, label }) => (
+              <div key={label} className="space-y-1">
+                {preview && (
+                  <div className="flex items-center gap-2">
+                    <img src={preview} alt={label} className="w-16 h-16 object-cover rounded-lg border border-[#e5e7eb]" />
+                    <button
+                      type="button"
+                      onClick={() => handleFileSelect(null, slot)}
+                      className="text-xs text-[#DC2626] hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+                <label className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-dashed border-[#d1d5db] text-sm text-[#6b7280] cursor-pointer hover:border-[#3B5BDB] hover:text-[#3B5BDB] transition-colors">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  {label}
+                  {preview ? `Replace ${label}` : `Upload ${label}`}
                   <input
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={(e) => set(e.target.files?.[0] ?? null)}
+                    onChange={(e) => handleFileSelect(e.target.files?.[0] ?? null, slot)}
                   />
                 </label>
               </div>

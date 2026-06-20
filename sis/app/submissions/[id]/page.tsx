@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useSubmission } from '@/hooks/useSubmissions'
-import { uploadAttachment } from '@/lib/supabase/storage'
+import { uploadAttachment, deleteAttachment } from '@/lib/supabase/storage'
 
 export default function SubmissionDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -21,8 +21,15 @@ export default function SubmissionDetailPage() {
   const [attachment1, setAttachment1] = useState<File | null>(null)
   const [attachment2, setAttachment2] = useState<File | null>(null)
   const [attachment3, setAttachment3] = useState<File | null>(null)
+  const [preview1, setPreview1] = useState<string | null>(null)
+  const [preview2, setPreview2] = useState<string | null>(null)
+  const [preview3, setPreview3] = useState<string | null>(null)
+  const [removed1, setRemoved1] = useState(false)
+  const [removed2, setRemoved2] = useState(false)
+  const [removed3, setRemoved3] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Populate fields once submission loads
@@ -37,6 +44,50 @@ export default function SubmissionDetailPage() {
     }
   }, [submission])
 
+  // Clean up object URLs when component unmounts or files change
+  useEffect(() => {
+    return () => {
+      if (preview1) URL.revokeObjectURL(preview1)
+      if (preview2) URL.revokeObjectURL(preview2)
+      if (preview3) URL.revokeObjectURL(preview3)
+    }
+  }, [preview1, preview2, preview3])
+
+  function handleFileSelect(file: File | null, slot: 1 | 2 | 3) {
+    if (slot === 1) {
+      setAttachment1(file)
+      setPreview1(file ? URL.createObjectURL(file) : null)
+      if (file) setRemoved1(false)
+    } else if (slot === 2) {
+      setAttachment2(file)
+      setPreview2(file ? URL.createObjectURL(file) : null)
+      if (file) setRemoved2(false)
+    } else {
+      setAttachment3(file)
+      setPreview3(file ? URL.createObjectURL(file) : null)
+      if (file) setRemoved3(false)
+    }
+  }
+
+  function handleRemoveAttachment(slot: 1 | 2 | 3) {
+    if (slot === 1) {
+      setAttachment1(null)
+      if (preview1) URL.revokeObjectURL(preview1)
+      setPreview1(null)
+      setRemoved1(true)
+    } else if (slot === 2) {
+      setAttachment2(null)
+      if (preview2) URL.revokeObjectURL(preview2)
+      setPreview2(null)
+      setRemoved2(true)
+    } else {
+      setAttachment3(null)
+      if (preview3) URL.revokeObjectURL(preview3)
+      setPreview3(null)
+      setRemoved3(true)
+    }
+  }
+
   async function handleSignOut() {
     await supabase.auth.signOut()
     router.push('/login')
@@ -48,14 +99,28 @@ export default function SubmissionDetailPage() {
     setError(null)
     setSaved(false)
 
-    // Upload any new attachments
-    let attachmentUrl1 = submission.attachment_1
-    let attachmentUrl2 = submission.attachment_2
-    let attachmentUrl3 = submission.attachment_3
+    // Upload any new attachments, or clear if removed
+    let attachmentUrl1 = removed1 ? null : submission.attachment_1
+    let attachmentUrl2 = removed2 ? null : submission.attachment_2
+    let attachmentUrl3 = removed3 ? null : submission.attachment_3
 
     if (attachment1) attachmentUrl1 = await uploadAttachment(attachment1, submission.id, 1)
+    else if (removed1 && submission.attachment_1) {
+      const ext = submission.attachment_1.split('.').pop() ?? 'jpg'
+      await deleteAttachment(submission.id, 1, ext)
+    }
+
     if (attachment2) attachmentUrl2 = await uploadAttachment(attachment2, submission.id, 2)
+    else if (removed2 && submission.attachment_2) {
+      const ext = submission.attachment_2.split('.').pop() ?? 'jpg'
+      await deleteAttachment(submission.id, 2, ext)
+    }
+
     if (attachment3) attachmentUrl3 = await uploadAttachment(attachment3, submission.id, 3)
+    else if (removed3 && submission.attachment_3) {
+      const ext = submission.attachment_3.split('.').pop() ?? 'jpg'
+      await deleteAttachment(submission.id, 3, ext)
+    }
 
     const { error } = await supabase
       .from('submissions')
@@ -76,6 +141,27 @@ export default function SubmissionDetailPage() {
     else setSaved(true)
 
     setSaving(false)
+  }
+
+  async function handleDelete() {
+    if (!submission) return
+    const confirmed = confirm(
+      `Delete this submission for ${submission.students?.name}? This cannot be undone.`
+    )
+    if (!confirmed) return
+
+    setDeleting(true)
+    setError(null)
+
+    const { error } = await supabase.from('submissions').delete().eq('id', id)
+
+    if (error) {
+      setError('Could not delete submission. Please try again.')
+      setDeleting(false)
+      return
+    }
+
+    router.push('/dashboard')
   }
 
   if (loading) {
@@ -212,30 +298,49 @@ export default function SubmissionDetailPage() {
           <div className="space-y-2">
             <label className="block text-sm font-medium text-[#374151]">Attachments</label>
             {[
-              { existing: submission.attachment_1, set: setAttachment1, label: 'Attachment 1' },
-              { existing: submission.attachment_2, set: setAttachment2, label: 'Attachment 2' },
-              { existing: submission.attachment_3, set: setAttachment3, label: 'Attachment 3' },
-            ].map(({ existing, set, label }) => (
-              <div key={label} className="space-y-1">
-                {existing && (
-                  <div className="flex items-center gap-2">
-                    <img src={existing} alt={label} className="w-16 h-16 object-cover rounded-lg border border-[#e5e7eb]" />
-                    <a href={existing} target="_blank" rel="noopener noreferrer"
-                      className="text-xs text-[#3B5BDB] hover:underline">
-                      View full image →
-                    </a>
-                  </div>
-                )}
-                <label className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-dashed border-[#d1d5db] text-sm text-[#6b7280] cursor-pointer hover:border-[#3B5BDB] hover:text-[#3B5BDB] transition-colors">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  {existing ? `Replace ${label}` : `Upload ${label}`}
-                  <input type="file" accept="image/*" className="hidden"
-                    onChange={(e) => set(e.target.files?.[0] ?? null)} />
-                </label>
-              </div>
-            ))}
+              { existing: submission.attachment_1, preview: preview1, slot: 1 as const, removed: removed1, set: (f: File | null) => handleFileSelect(f, 1), label: 'Attachment 1' },
+              { existing: submission.attachment_2, preview: preview2, slot: 2 as const, removed: removed2, set: (f: File | null) => handleFileSelect(f, 2), label: 'Attachment 2' },
+              { existing: submission.attachment_3, preview: preview3, slot: 3 as const, removed: removed3, set: (f: File | null) => handleFileSelect(f, 3), label: 'Attachment 3' },
+            ].map(({ existing, preview, slot, removed, set, label }) => {
+              const displayImage = preview ?? (removed ? null : existing)
+              return (
+                <div key={label} className="space-y-1">
+                  {displayImage && (
+                    <div className="flex items-center gap-2">
+                      <img src={displayImage} alt={label} className="w-16 h-16 object-cover rounded-lg border border-[#e5e7eb]" />
+                      <div className="flex flex-col gap-1">
+                        {preview ? (
+                          <span className="text-xs text-[#F59E0B]">New image — not saved yet</span>
+                        ) : (
+                          <a href={existing!} target="_blank" rel="noopener noreferrer"
+                            className="text-xs text-[#3B5BDB] hover:underline">
+                            View full image →
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAttachment(slot)}
+                          className="text-xs text-[#DC2626] hover:underline text-left"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {removed && !preview && (
+                    <p className="text-xs text-[#F59E0B]">Will be removed when you save</p>
+                  )}
+                  <label className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-dashed border-[#d1d5db] text-sm text-[#6b7280] cursor-pointer hover:border-[#3B5BDB] hover:text-[#3B5BDB] transition-colors">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    {displayImage ? `Replace ${label}` : `Upload ${label}`}
+                    <input type="file" accept="image/*" className="hidden"
+                      onChange={(e) => set(e.target.files?.[0] ?? null)} />
+                  </label>
+                </div>
+              )
+            })}
           </div>
 
           <hr className="border-[#e5e7eb]" />
@@ -271,6 +376,21 @@ export default function SubmissionDetailPage() {
             className="w-full bg-[#3B5BDB] hover:bg-[#2f4ac4] disabled:bg-[#93a3e8] text-white font-medium text-sm py-2.5 rounded-lg transition-colors"
           >
             {saving ? 'Saving...' : 'Save changes'}
+          </button>
+        </div>
+
+        {/* Delete Submission */}
+        <div className="bg-white rounded-xl border border-[#FECACA] p-5 space-y-2">
+          <h2 className="text-sm font-semibold text-[#DC2626]">Delete this submission</h2>
+          <p className="text-xs text-[#6b7280]">
+            This will permanently remove this submission and cannot be undone.
+          </p>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="w-full bg-white border border-[#DC2626] hover:bg-[#FEF2F2] disabled:opacity-50 text-[#DC2626] font-medium text-sm py-2.5 rounded-lg transition-colors"
+          >
+            {deleting ? 'Deleting...' : 'Delete submission'}
           </button>
         </div>
       </div>
