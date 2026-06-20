@@ -9,8 +9,7 @@ import { useClasses } from '@/hooks/useClasses'
 export default function StudentsPage() {
   const { students, loading, addStudent, deleteStudent } = useStudents()
   const { classes } = useClasses()
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
+  const [name, setName] = useState('')
   const [classId, setClassId] = useState('')
   const [filterClassId, setFilterClassId] = useState('')
   const [adding, setAdding] = useState(false)
@@ -24,27 +23,26 @@ export default function StudentsPage() {
   }
 
   async function handleAddStudent() {
-    if (!firstName.trim() || !lastName.trim() || !classId) return
+    if (!name.trim() || !classId) return
     setAdding(true)
     setError(null)
 
     const success = await addStudent({
-      name: firstName.trim(),
+      name: name.trim(),
       class_id: classId,
     })
 
     if (!success) setError('Could not add student. Please try again.')
     else {
-      setFirstName('')
-      setLastName('')
+      setName('')
       setClassId('')
     }
 
     setAdding(false)
   }
 
-  async function handleDeleteStudent(id: string, name: string) {
-    const confirmed = confirm(`Delete "${name}"? This cannot be undone.`)
+  async function handleDeleteStudent(id: string, studentName: string) {
+    const confirmed = confirm(`Delete "${studentName}"? This cannot be undone.`)
     if (!confirmed) return
     const success = await deleteStudent(id)
     if (!success) setError('Could not delete — this student may have submissions linked to them.')
@@ -103,28 +101,19 @@ export default function StudentsPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              type="text"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="Name"
-              className="px-4 py-2.5 rounded-lg border border-[#d1d5db] text-[#1a1a2e] placeholder:text-[#9ca3af] text-sm focus:outline-none focus:ring-2 focus:ring-[#3B5BDB] focus:border-transparent transition"
-            />
-            <input
-              type="text"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              placeholder="Korean Name"
-              className="px-4 py-2.5 rounded-lg border border-[#d1d5db] text-[#1a1a2e] placeholder:text-[#9ca3af] text-sm focus:outline-none focus:ring-2 focus:ring-[#3B5BDB] focus:border-transparent transition"
-            />
-          </div>
-
           <div className="flex gap-2">
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddStudent()}
+              placeholder="Student name"
+              className="flex-1 px-4 py-2.5 rounded-lg border border-[#d1d5db] text-[#1a1a2e] placeholder:text-[#9ca3af] text-sm focus:outline-none focus:ring-2 focus:ring-[#3B5BDB] focus:border-transparent transition"
+            />
             <select
               value={classId}
               onChange={(e) => setClassId(e.target.value)}
-              className="flex-1 px-4 py-2.5 rounded-lg border border-[#d1d5db] text-[#1a1a2e] text-sm focus:outline-none focus:ring-2 focus:ring-[#3B5BDB] focus:border-transparent transition bg-white"
+              className="px-4 py-2.5 rounded-lg border border-[#d1d5db] text-[#1a1a2e] text-sm focus:outline-none focus:ring-2 focus:ring-[#3B5BDB] focus:border-transparent transition bg-white"
             >
               <option value="">Select a class</option>
               {classes.map((c) => (
@@ -133,7 +122,7 @@ export default function StudentsPage() {
             </select>
             <button
               onClick={handleAddStudent}
-              disabled={adding || !firstName.trim() || !lastName.trim() || !classId}
+              disabled={adding || !name.trim() || !classId}
               className="bg-[#3B5BDB] hover:bg-[#2f4ac4] disabled:bg-[#93a3e8] text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
             >
               {adding ? 'Adding...' : 'Add student'}
@@ -199,7 +188,7 @@ export default function StudentsPage() {
                     View →
                   </button>
                   <button
-                    onClick={() => handleDeleteStudent(s.id, `${s.name}`)}
+                    onClick={() => handleDeleteStudent(s.id, s.name)}
                     className="text-xs text-[#DC2626] hover:underline"
                   >
                     Delete
