@@ -142,7 +142,7 @@ export default function NewSubmissionPage() {
         {/* Page Title */}
         <div>
           <h1 className="text-xl font-bold text-[#1a1a2e]">New Submission</h1>
-          <p className="text-sm text-[#6b7280]">Log a student's homework submission</p>
+          <p className="text-sm text-[#6b7280]">Log a student's storytelling submission</p>
         </div>
 
         {error && (
