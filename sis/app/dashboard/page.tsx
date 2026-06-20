@@ -4,11 +4,20 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { SubmissionWithDetails } from '@/types'
+import { useClasses } from '@/hooks/useClasses'
+
+type CheckedFilter = 'all' | 'checked' | 'pending'
 
 export default function DashboardPage() {
   const [submissions, setSubmissions] = useState<SubmissionWithDetails[]>([])
   const [totalStudents, setTotalStudents] = useState(0)
   const [loading, setLoading] = useState(true)
+
+  const [filterClassId, setFilterClassId] = useState('')
+  const [filterChecked, setFilterChecked] = useState<CheckedFilter>('all')
+  const [searchTerm, setSearchTerm] = useState('')
+
+  const { classes } = useClasses()
   const router = useRouter()
   const supabase = createClient()
 
@@ -21,7 +30,7 @@ export default function DashboardPage() {
         .from('submissions')
         .select(`
           *,
-          students(name),
+          students(name, class_id),
           storytelling(name, classes(name))
         `)
         .order('date_submitted', { ascending: false })
@@ -57,6 +66,23 @@ export default function DashboardPage() {
 
   const pendingCount = submissions.filter((s) => !s.is_checked).length
   const checkedCount = submissions.filter((s) => s.is_checked).length
+
+  // Apply filters
+  const filteredSubmissions = submissions.filter((s) => {
+    if (filterClassId && (s.students as any)?.class_id !== filterClassId) return false
+    if (filterChecked === 'checked' && !s.is_checked) return false
+    if (filterChecked === 'pending' && s.is_checked) return false
+    if (searchTerm && !s.students?.name?.toLowerCase().includes(searchTerm.toLowerCase())) return false
+    return true
+  })
+
+  const hasActiveFilters = filterClassId || filterChecked !== 'all' || searchTerm
+
+  function clearFilters() {
+    setFilterClassId('')
+    setFilterChecked('all')
+    setSearchTerm('')
+  }
 
   return (
     <main className="min-h-screen bg-[#F0F4FF]">
@@ -111,10 +137,64 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* Filters */}
+        <div className="bg-white rounded-xl border border-[#e5e7eb] p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-[#1a1a2e]">Filters</h2>
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="text-xs text-[#3B5BDB] hover:underline"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {/* Search by student name */}
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search student name..."
+              className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-[#d1d5db] text-[#1a1a2e] placeholder:text-[#9ca3af] text-sm focus:outline-none focus:ring-2 focus:ring-[#3B5BDB]"
+            />
+
+            {/* Class filter */}
+            <select
+              value={filterClassId}
+              onChange={(e) => setFilterClassId(e.target.value)}
+              className="px-3 py-2 rounded-lg border border-[#d1d5db] text-[#1a1a2e] text-sm focus:outline-none focus:ring-2 focus:ring-[#3B5BDB] bg-white"
+            >
+              <option value="">All classes</option>
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>Class {c.name}</option>
+              ))}
+            </select>
+
+            {/* Checked status filter */}
+            <select
+              value={filterChecked}
+              onChange={(e) => setFilterChecked(e.target.value as CheckedFilter)}
+              className="px-3 py-2 rounded-lg border border-[#d1d5db] text-[#1a1a2e] text-sm focus:outline-none focus:ring-2 focus:ring-[#3B5BDB] bg-white"
+            >
+              <option value="all">All statuses</option>
+              <option value="pending">Pending only</option>
+              <option value="checked">Checked only</option>
+            </select>
+          </div>
+        </div>
+
         {/* Submissions List */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-[#1a1a2e]">All Submissions</h2>
+            <h2 className="text-sm font-semibold text-[#1a1a2e]">
+              Submissions
+              <span className="text-[#6b7280] font-normal ml-1">
+                ({filteredSubmissions.length})
+              </span>
+            </h2>
             <button
               onClick={() => router.push('/submissions/new')}
               className="text-xs bg-[#3B5BDB] hover:bg-[#2f4ac4] text-white px-3 py-1.5 rounded-lg transition-colors"
@@ -129,19 +209,32 @@ export default function DashboardPage() {
                 <div key={i} className="bg-white rounded-xl p-4 border border-[#e5e7eb] animate-pulse h-16" />
               ))}
             </div>
-          ) : submissions.length === 0 ? (
+          ) : filteredSubmissions.length === 0 ? (
             <div className="bg-white rounded-xl border border-[#e5e7eb] p-8 text-center">
-              <p className="text-sm text-[#6b7280]">No submissions yet.</p>
-              <button
-                onClick={() => router.push('/submissions/new')}
-                className="mt-3 text-sm text-[#3B5BDB] hover:underline"
-              >
-                Log the first one
-              </button>
+              <p className="text-sm text-[#6b7280]">
+                {submissions.length === 0
+                  ? 'No submissions yet.'
+                  : 'No submissions match your filters.'}
+              </p>
+              {submissions.length === 0 ? (
+                <button
+                  onClick={() => router.push('/submissions/new')}
+                  className="mt-3 text-sm text-[#3B5BDB] hover:underline"
+                >
+                  Log the first one
+                </button>
+              ) : (
+                <button
+                  onClick={clearFilters}
+                  className="mt-3 text-sm text-[#3B5BDB] hover:underline"
+                >
+                  Clear filters
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-2">
-              {submissions.map((s) => (
+              {filteredSubmissions.map((s) => (
                 <div
                   key={s.id}
                   className="bg-white rounded-xl border border-[#e5e7eb] px-4 py-3 flex items-center gap-3"
