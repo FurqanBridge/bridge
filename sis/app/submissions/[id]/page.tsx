@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useSubmission } from '@/hooks/useSubmissions'
 import { uploadAttachment, deleteAttachment } from '@/lib/supabase/storage'
+import TranscribeButton from '@/components/TranscribeButton'
 
 export default function SubmissionDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -153,6 +154,10 @@ export default function SubmissionDetailPage() {
     setDeleting(true)
     setError(null)
 
+    // Delete any attachments from storage first
+    const { deleteAllAttachments } = await import('@/lib/supabase/storage')
+    await deleteAllAttachments(id)
+
     const { error } = await supabase.from('submissions').delete().eq('id', id)
 
     if (error) {
@@ -276,19 +281,31 @@ export default function SubmissionDetailPage() {
               { val: url2, set: setUrl2, label: 'Link 2' },
               { val: url3, set: setUrl3, label: 'Link 3' },
             ].map(({ val, set, label }) => (
-              <div key={label} className="flex items-center gap-2">
-                <input
-                  type="url"
-                  value={val}
-                  onChange={(e) => set(e.target.value)}
-                  placeholder={`https://... (${label})`}
-                  className="flex-1 px-4 py-2.5 rounded-lg border border-[#d1d5db] text-[#1a1a2e] placeholder:text-[#9ca3af] text-sm focus:outline-none focus:ring-2 focus:ring-[#3B5BDB]"
-                />
-                {val && (
-                  <a href={val} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-[#3B5BDB] hover:underline whitespace-nowrap">
-                    Open →
-                  </a>
+              <div key={label} className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="url"
+                    value={val}
+                    onChange={(e) => set(e.target.value)}
+                    placeholder={`https://... (${label})`}
+                    className="flex-1 px-4 py-2.5 rounded-lg border border-[#d1d5db] text-[#1a1a2e] placeholder:text-[#9ca3af] text-sm focus:outline-none focus:ring-2 focus:ring-[#3B5BDB]"
+                  />
+                  {val && (
+                    <a href={val} target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-[#3B5BDB] hover:underline whitespace-nowrap">
+                      Open →
+                    </a>
+                  )}
+                </div>
+                {val && val.includes('youtube') && (
+                  <TranscribeButton
+                    url={val}
+                    urlLabel={label}
+                    studentName={submission.students?.name ?? ''}
+                    storytellingName={submission.storytelling?.name ?? ''}
+                    className={submission.storytelling?.classes?.name ?? ''}
+                    dateSubmitted={submission.date_submitted}
+                  />
                 )}
               </div>
             ))}
