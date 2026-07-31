@@ -2,33 +2,56 @@ import { createClient } from '@/lib/supabase/client'
 import { Student, NewStudent, StudentWithClass } from '@/types'
 import { useState, useEffect } from 'react'
 
-export function useStudents(classId?: string) {
+export function useStudents(classId?: string, activeOnly: boolean = true) {
   const [students, setStudents] = useState<StudentWithClass[]>([])
+  const [archivedStudents, setArchivedStudents] = useState<StudentWithClass[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const supabase = createClient()
 
-  // Fetch students — optionally filtered by class
   async function fetchStudents() {
     setLoading(true)
 
-    let query = supabase
+    // Fetch active students
+    let activeQuery = supabase
       .from('students')
       .select('*, classes(name)')
+      .eq('is_active', true)
+      .order('name')
 
-    if (classId) query = query.eq('class_id', classId)
+    if (classId) activeQuery = activeQuery.eq('class_id', classId)
 
-    const { data, error } = await query
+    // Fetch archived students
+    let archivedQuery = supabase
+      .from('students')
+      .select('*, classes(name)')
+      .eq('is_active', false)
+      .order('name')
 
-    if (error) setError(error.message)
-    else setStudents((data as StudentWithClass[]) ?? [])
+    if (classId) archivedQuery = archivedQuery.eq('class_id', classId)
+
+    const [activeResult, archivedResult] = await Promise.all([
+      activeQuery,
+      archivedQuery,
+    ])
+
+    if (activeResult.error) setError(activeResult.error.message)
+    else setStudents((activeResult.data as StudentWithClass[]) ?? [])
+
+    if (!archivedResult.error) {
+      setArchivedStudents((archivedResult.data as StudentWithClass[]) ?? [])
+    }
+
     setLoading(false)
   }
 
   // Add a new student
   async function addStudent(newStudent: NewStudent): Promise<boolean> {
-    const { error } = await supabase.from('students').insert(newStudent)
+    const { error } = await supabase.from('students').insert({
+      ...newStudent,
+      is_active: true,
+    })
     if (error) { setError(error.message); return false }
     await fetchStudents()
     return true
@@ -42,7 +65,28 @@ export function useStudents(classId?: string) {
     return true
   }
 
-  // Delete a student
+  // Archive a student (soft delete — preserves all submissions)
+  async function archiveStudent(id: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('students')
+      .update({ is_active: false })
+      .eq('id', id)
+    if (error) { setError(error.message); return false }
+    await fetchStudents()
+    return true
+  }
+
+  // Reactivate an archived student (optionally move to a new class)
+  async function reactivateStudent(id: string, newClassId?: string): Promise<boolean> {
+    const updates: any = { is_active: true }
+    if (newClassId) updates.class_id = newClassId
+    const { error } = await supabase.from('students').update(updates).eq('id', id)
+    if (error) { setError(error.message); return false }
+    await fetchStudents()
+    return true
+  }
+
+  // Hard delete — only use if student has no submissions
   async function deleteStudent(id: string): Promise<boolean> {
     const { error } = await supabase.from('students').delete().eq('id', id)
     if (error) { setError(error.message); return false }
@@ -52,7 +96,18 @@ export function useStudents(classId?: string) {
 
   useEffect(() => { fetchStudents() }, [classId])
 
-  return { students, loading, error, addStudent, updateStudent, deleteStudent, refetch: fetchStudents }
+  return {
+    students,
+    archivedStudents,
+    loading,
+    error,
+    addStudent,
+    updateStudent,
+    archiveStudent,
+    reactivateStudent,
+    deleteStudent,
+    refetch: fetchStudents,
+  }
 }
 
 // Fetch a single student by ID
