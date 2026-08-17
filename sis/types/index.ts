@@ -23,14 +23,16 @@ export type NewClass = {
 // ============================================
 export type Student = {
   id: string
-  name: string
+  first_name: string
+  last_name: string
   class_id: string
   created_at: string
   updated_at: string
 }
 
 export type NewStudent = {
-  name: string
+  first_name: string
+  last_name: string
   class_id: string
 }
 
@@ -67,7 +69,7 @@ export type StorytellingWithClass = Storytelling & {
 export type Submission = {
   id: string
   student_id: string
-  storytelling_id: string
+  assignment_id: string
   date_submitted: string        // ISO date string e.g. "2024-06-12"
 
   // Teacher checkbox
@@ -95,7 +97,7 @@ export type Submission = {
 
 export type NewSubmission = {
   student_id: string
-  storytelling_id: string
+  assignment_id: string
   date_submitted: string
   url_1?: string | null
   url_2?: string | null
@@ -107,13 +109,13 @@ export type NewSubmission = {
   disadvantages?: string | null
 }
 
-export type UpdateSubmission = Partial<Omit<NewSubmission, 'student_id' | 'storytelling_id'>> & {
+export type UpdateSubmission = Partial<Omit<NewSubmission, 'student_id' | 'assignment_id'>> & {
   is_checked?: boolean
 }
 
 // Full submission with related data joined (for display purposes)
 export type SubmissionWithDetails = Submission & {
-  students: Pick<Student, 'name'>
+  students: Pick<Student, 'first_name' | 'last_name'>
   storytelling: Pick<Storytelling, 'name'> & {
     classes: Pick<Class, 'name'>
   }
@@ -132,3 +134,64 @@ export type UrlSlot = 1 | 2 | 3
 
 // Checked status for filtering
 export type CheckedStatus = 'all' | 'checked' | 'unchecked'
+
+
+// ============================================
+// TEACHER
+// ============================================
+export type Teacher = {
+  id: string
+  name: string
+  created_at: string
+}
+
+export type NewTeacher = {
+  name: string
+}
+
+
+// ============================================
+// MAKEUP SCHEDULE
+// ============================================
+export type MakeupProgress =
+  | 'scheduled'
+  | 'voca_retest'
+  | 'build_up_class'
+  | 'complete'
+  | 'cancellation'
+
+export type MakeupSchedule = {
+  id: string
+  student_id: string
+  class_id: string
+  teacher_id: string
+  date_absent: string | null
+  date_makeup: string | null
+  class_time: string | null
+  progress: MakeupProgress
+  textbook_materials: string | null
+  reason_for_absence: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type NewMakeupSchedule = {
+  student_id: string
+  class_id: string
+  teacher_id: string
+  date_absent?: string | null
+  date_makeup?: string | null
+  class_time?: string | null
+  progress?: MakeupProgress
+  textbook_materials?: string | null
+  reason_for_absence?: string | null
+}
+
+export type UpdateMakeupSchedule = Partial<Omit<NewMakeupSchedule, 'student_id' | 'class_id'>>
+
+// Full makeup schedule with related data joined
+export type MakeupScheduleWithDetails = MakeupSchedule & {
+  students: Pick<Student, 'name'>
+  classes: Pick<Class, 'name'>
+  teachers: Pick<Teacher, 'name'>
+}
