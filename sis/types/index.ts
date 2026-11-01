@@ -65,14 +65,17 @@ export type StorytellingWithClass = Storytelling & {
 // ============================================
 // HOMEWORK SUBMISSION
 // ============================================
+export type StorytellingProgress = 'pending' | 'checked' | 'pass'
+
 export type Submission = {
   id: string
   student_id: string
-  assignment_id: string
+  storytelling_id: string
   date_submitted: string        // ISO date string e.g. "2024-06-12"
 
-  // Teacher checkbox
-  is_checked: boolean
+  // Teacher status
+  is_checked: boolean           // legacy; kept in sync (true for checked/pass)
+  progress: StorytellingProgress
   checked_at: string | null
 
   // Homework links
@@ -108,8 +111,9 @@ export type NewSubmission = {
   disadvantages?: string | null
 }
 
-export type UpdateSubmission = Partial<Omit<NewSubmission, 'student_id' | 'assignment_id'>> & {
+export type UpdateSubmission = Partial<Omit<NewSubmission, 'student_id' | 'storytelling_id'>> & {
   is_checked?: boolean
+  progress?: StorytellingProgress
 }
 
 // Full submission with related data joined (for display purposes)

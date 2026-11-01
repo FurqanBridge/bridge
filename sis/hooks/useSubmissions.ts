@@ -1,12 +1,12 @@
 import { createClient } from '@/lib/supabase/client'
-import { NewSubmission, UpdateSubmission, SubmissionWithDetails } from '@/types'
+import { NewSubmission, UpdateSubmission, SubmissionWithDetails, StorytellingProgress } from '@/types'
 import { useState, useEffect } from 'react'
 
 interface SubmissionFilters {
   studentId?: string
   storytellingId?: string
   classId?: string
-  isChecked?: boolean
+  progress?: StorytellingProgress
 }
 
 export function useSubmissions(filters: SubmissionFilters = {}) {
@@ -31,7 +31,7 @@ export function useSubmissions(filters: SubmissionFilters = {}) {
 
     if (filters.studentId) query = query.eq('student_id', filters.studentId)
     if (filters.storytellingId) query = query.eq('storytelling_id', filters.storytellingId)
-    if (filters.isChecked !== undefined) query = query.eq('is_checked', filters.isChecked)
+    if (filters.progress) query = query.eq('progress', filters.progress)
 
     const { data, error } = await query
 
@@ -56,9 +56,9 @@ export function useSubmissions(filters: SubmissionFilters = {}) {
     return true
   }
 
-  // Toggle the checked status
-  async function toggleChecked(id: string, currentStatus: boolean): Promise<boolean> {
-    return updateSubmission(id, { is_checked: !currentStatus })
+  // Set progress (pending / checked / pass); keeps is_checked in sync
+  async function setProgress(id: string, progress: StorytellingProgress): Promise<boolean> {
+    return updateSubmission(id, { progress, is_checked: progress !== 'pending' })
   }
 
   // Delete a submission
@@ -71,7 +71,7 @@ export function useSubmissions(filters: SubmissionFilters = {}) {
 
   useEffect(() => {
     fetchSubmissions()
-  }, [filters.studentId, filters.storytellingId, filters.classId, filters.isChecked])
+  }, [filters.studentId, filters.storytellingId, filters.classId, filters.progress])
 
   return {
     submissions,
@@ -79,7 +79,7 @@ export function useSubmissions(filters: SubmissionFilters = {}) {
     error,
     addSubmission,
     updateSubmission,
-    toggleChecked,
+    setProgress,
     deleteSubmission,
     refetch: fetchSubmissions
   }

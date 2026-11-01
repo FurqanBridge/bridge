@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useSubmission } from '@/hooks/useSubmissions'
+import type { StorytellingProgress } from '@/types'
+import { PROGRESS_BADGE, PROGRESS_LABEL, isDone } from '@/lib/progress'
 import { uploadAttachment, deleteAttachment } from '@/lib/supabase/storage'
 
 export default function SubmissionDetailPage() {
@@ -17,7 +19,7 @@ export default function SubmissionDetailPage() {
   const [url3, setUrl3] = useState('')
   const [advantages, setAdvantages] = useState('')
   const [disadvantages, setDisadvantages] = useState('')
-  const [isChecked, setIsChecked] = useState(false)
+  const [progress, setProgress] = useState<StorytellingProgress>('pending')
   const [attachment1, setAttachment1] = useState<File | null>(null)
   const [attachment2, setAttachment2] = useState<File | null>(null)
   const [attachment3, setAttachment3] = useState<File | null>(null)
@@ -40,7 +42,7 @@ export default function SubmissionDetailPage() {
       setUrl3(submission.url_3 ?? '')
       setAdvantages(submission.advantages ?? '')
       setDisadvantages(submission.disadvantages ?? '')
-      setIsChecked(submission.is_checked)
+      setProgress(submission.progress)
     }
   }, [submission])
 
@@ -133,7 +135,8 @@ export default function SubmissionDetailPage() {
         attachment_3: attachmentUrl3,
         advantages: advantages || null,
         disadvantages: disadvantages || null,
-        is_checked: isChecked,
+        progress,
+        is_checked: isDone(progress),
       })
       .eq('id', id)
 
@@ -226,10 +229,8 @@ export default function SubmissionDetailPage() {
               {submission.storytelling?.name} · Class {submission.storytelling?.classes?.name} · {submission.date_submitted}
             </p>
           </div>
-          <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-            isChecked ? 'bg-[#DCFCE7] text-[#16A34A]' : 'bg-[#FEF2F2] text-[#DC2626]'
-          }`}>
-            {isChecked ? 'Checked' : 'Pending'}
+          <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${PROGRESS_BADGE[progress]}`}>
+            {PROGRESS_LABEL[progress]}
           </span>
         </div>
 
@@ -251,23 +252,27 @@ export default function SubmissionDetailPage() {
           {/* Checked toggle */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-[#374151]">Mark as checked</p>
+              <p className="text-sm font-medium text-[#374151]">Status</p>
               <p className="text-xs text-[#6b7280]">
                 {submission.checked_at
                   ? `Checked on ${new Date(submission.checked_at).toLocaleDateString()}`
                   : 'Not yet checked'}
               </p>
             </div>
-            <button
-              onClick={() => setIsChecked(!isChecked)}
-              className={`w-11 h-6 rounded-full transition-colors relative ${
-                isChecked ? 'bg-[#16A34A]' : 'bg-[#d1d5db]'
-              }`}
-            >
-              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                isChecked ? 'translate-x-5' : 'translate-x-0.5'
-              }`} />
-            </button>
+            <div className="flex rounded-lg border border-[#d1d5db] overflow-hidden">
+              {(['pending', 'checked', 'pass'] as StorytellingProgress[]).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setProgress(p)}
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                    progress === p ? PROGRESS_BADGE[p] : 'bg-white text-[#6b7280] hover:bg-[#f9fafb]'
+                  }`}
+                >
+                  {PROGRESS_LABEL[p]}
+                </button>
+              ))}
+            </div>
           </div>
 
           <hr className="border-[#e5e7eb]" />

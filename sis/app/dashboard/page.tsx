@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { SubmissionWithDetails } from '@/types'
+import { SubmissionWithDetails, StorytellingProgress } from '@/types'
 import { useClasses } from '@/hooks/useClasses'
+import StatusCircle from '@/components/StatusCircle'
+import { PROGRESS_BADGE, PROGRESS_LABEL, isDone, saveProgress } from '@/lib/progress'
 
-type CheckedFilter = 'all' | 'checked' | 'pending'
+type CheckedFilter = 'all' | 'checked' | 'pass' | 'pending'
 
 export default function DashboardPage() {
   const [submissions, setSubmissions] = useState<SubmissionWithDetails[]>([])
@@ -53,25 +55,24 @@ export default function DashboardPage() {
     router.push('/login')
   }
 
-  async function toggleChecked(id: string, current: boolean) {
-    await supabase
-      .from('submissions')
-      .update({ is_checked: !current })
-      .eq('id', id)
-
+  async function changeProgress(id: string, next: StorytellingProgress) {
+    const ok = await saveProgress(supabase, id, next)
+    if (!ok) return
     setSubmissions((prev) =>
-      prev.map((s) => s.id === id ? { ...s, is_checked: !current } : s)
+      prev.map((s) => s.id === id ? { ...s, progress: next, is_checked: isDone(next) } : s)
     )
   }
 
-  const pendingCount = submissions.filter((s) => !s.is_checked).length
-  const checkedCount = submissions.filter((s) => s.is_checked).length
+  // "Pass" counts together with "Checked"
+  const pendingCount = submissions.filter((s) => s.progress === 'pending').length
+  const checkedCount = submissions.filter((s) => isDone(s.progress)).length
 
   // Apply filters
   const filteredSubmissions = submissions.filter((s) => {
     if (filterClassId && (s.students as any)?.class_id !== filterClassId) return false
-    if (filterChecked === 'checked' && !s.is_checked) return false
-    if (filterChecked === 'pending' && s.is_checked) return false
+    if (filterChecked === 'checked' && s.progress !== 'checked') return false
+    if (filterChecked === 'pass' && s.progress !== 'pass') return false
+    if (filterChecked === 'pending' && s.progress !== 'pending') return false
     if (searchTerm && !s.students?.name?.toLowerCase().includes(searchTerm.toLowerCase())) return false
     return true
   })
@@ -182,6 +183,7 @@ export default function DashboardPage() {
               <option value="all">All statuses</option>
               <option value="pending">Pending only</option>
               <option value="checked">Checked only</option>
+              <option value="pass">Pass only</option>
             </select>
           </div>
         </div>
@@ -239,21 +241,11 @@ export default function DashboardPage() {
                   key={s.id}
                   className="bg-white rounded-xl border border-[#e5e7eb] px-4 py-3 flex items-center gap-3"
                 >
-                  {/* Checkbox */}
-                  <button
-                    onClick={() => toggleChecked(s.id, s.is_checked)}
-                    className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                      s.is_checked
-                        ? 'bg-[#16A34A] border-[#16A34A]'
-                        : 'border-[#d1d5db] hover:border-[#3B5BDB]'
-                    }`}
-                  >
-                    {s.is_checked && (
-                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </button>
+                  {/* Status circle: click toggles, double-click = Pass */}
+                  <StatusCircle
+                    progress={s.progress}
+                    onChange={(next) => changeProgress(s.id, next)}
+                  />
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
@@ -266,12 +258,8 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Status badge */}
-                  <span className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
-                    s.is_checked
-                      ? 'bg-[#DCFCE7] text-[#16A34A]'
-                      : 'bg-[#FEF2F2] text-[#DC2626]'
-                  }`}>
-                    {s.is_checked ? 'Checked' : 'Pending'}
+                  <span className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${PROGRESS_BADGE[s.progress]}`}>
+                    {PROGRESS_LABEL[s.progress]}
                   </span>
 
                   {/* View button */}

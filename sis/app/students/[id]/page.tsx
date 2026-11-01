@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useStudent } from '@/hooks/useStudents'
-import { SubmissionWithDetails } from '@/types'
+import { SubmissionWithDetails, StorytellingProgress } from '@/types'
+import StatusCircle from '@/components/StatusCircle'
+import { PROGRESS_BADGE, PROGRESS_LABEL, isDone, saveProgress } from '@/lib/progress'
 
 export default function StudentDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -21,6 +23,7 @@ export default function StudentDetailPage() {
         .from('submissions')
         .select(`
           *,
+          students(name),
           storytelling(name, classes(name))
         `)
         .eq('student_id', id)
@@ -33,19 +36,17 @@ export default function StudentDetailPage() {
     if (id) fetchSubmissions()
   }, [id])
 
-  async function toggleChecked(submissionId: string, current: boolean) {
-    await supabase
-      .from('submissions')
-      .update({ is_checked: !current })
-      .eq('id', submissionId)
-
+  async function changeProgress(submissionId: string, next: StorytellingProgress) {
+    const ok = await saveProgress(supabase, submissionId, next)
+    if (!ok) return
     setSubmissions((prev) =>
-      prev.map((s) => s.id === submissionId ? { ...s, is_checked: !current } : s)
+      prev.map((s) => s.id === submissionId ? { ...s, progress: next, is_checked: isDone(next) } : s)
     )
   }
 
-  const checkedCount = submissions.filter((s) => s.is_checked).length
-  const pendingCount = submissions.filter((s) => !s.is_checked).length
+  // "Pass" counts together with "Checked"
+  const checkedCount = submissions.filter((s) => isDone(s.progress)).length
+  const pendingCount = submissions.filter((s) => s.progress === 'pending').length
 
   if (studentLoading) {
     return (
@@ -84,7 +85,7 @@ export default function StudentDetailPage() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-[#1a1a2e]">{student.name}</h1>
-                <p className="text-sm text-[#6b7280]">{student.classes?.name}</p>
+                <p className="text-sm text-[#6b7280]">Class {student.classes?.name}</p>
               </div>
             </div>
           </div>
@@ -139,21 +140,10 @@ export default function StudentDetailPage() {
                   key={s.id}
                   className="bg-white rounded-xl border border-[#e5e7eb] px-4 py-3 flex items-center gap-3"
                 >
-                  {/* Checkbox */}
-                  <button
-                    onClick={() => toggleChecked(s.id, s.is_checked)}
-                    className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                      s.is_checked
-                        ? 'bg-[#16A34A] border-[#16A34A]'
-                        : 'border-[#d1d5db] hover:border-[#3B5BDB]'
-                    }`}
-                  >
-                    {s.is_checked && (
-                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </button>
+                  <StatusCircle
+                    progress={s.progress}
+                    onChange={(next) => changeProgress(s.id, next)}
+                  />
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
@@ -165,13 +155,8 @@ export default function StudentDetailPage() {
                     </p>
                   </div>
 
-                  {/* Status badge */}
-                  <span className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
-                    s.is_checked
-                      ? 'bg-[#DCFCE7] text-[#16A34A]'
-                      : 'bg-[#FEF2F2] text-[#DC2626]'
-                  }`}>
-                    {s.is_checked ? 'Checked' : 'Pending'}
+                  <span className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${PROGRESS_BADGE[s.progress]}`}>
+                    {PROGRESS_LABEL[s.progress]}
                   </span>
 
                   {/* View button */}
